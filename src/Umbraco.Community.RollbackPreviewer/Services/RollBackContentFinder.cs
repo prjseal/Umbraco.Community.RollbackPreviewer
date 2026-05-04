@@ -164,7 +164,9 @@ namespace Umbraco.Community.RollbackPreviewer.Services
                 }
 
                 // Convert the IContent to IPublishedContent.
-                IPublishedContent? pubContent = _publishedContentConverter.ToPublishedContent(content, culture)?
+                // isPreview must be true so property converters (pickers, block editors etc.)
+                // resolve draft references rather than returning null/published-only values.
+                IPublishedContent? pubContent = _publishedContentConverter.ToPublishedContent(content, culture, isPreview: true)?
                     .CreateModel(_publishedModelFactory);
 
                 if (pubContent == null)

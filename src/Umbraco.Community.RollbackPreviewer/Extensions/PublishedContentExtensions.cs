@@ -66,13 +66,13 @@ namespace Umbraco.Community.RollbackPreviewer.Extensions
                     var p = contentService.GetById(_inner.ParentId);
                     if (p == null)
                         return null;
-                    return converter.ToPublishedContent(p, culture).CreateModel(publishedModelFactory);
+                    return converter.ToPublishedContent(p, culture, _isPreviewing).CreateModel(publishedModelFactory);
                 });
 
                 _children = new Lazy<IEnumerable<IPublishedContent>>(() =>
                 {
                     var c = contentService.GetPagedChildren(_inner.Id, 0, 2000000000, out var totalRecords);
-                    return c.Select(x => converter.ToPublishedContent(x, culture).CreateModel(publishedModelFactory)).OrderBy(x => x.SortOrder);
+                    return c.Select(x => converter.ToPublishedContent(x, culture, _isPreviewing).CreateModel(publishedModelFactory)).OrderBy(x => x.SortOrder);
                 });
 
                 _cultureInfos = new Lazy<IReadOnlyDictionary<string, PublishedCultureInfo>>(() =>
@@ -183,12 +183,17 @@ namespace Umbraco.Community.RollbackPreviewer.Extensions
             public PublishedPropertyWrapper(IPublishedContent content,  IPublishedPropertyType propertyType, IProperty property, string? culture, bool isPreviewing)
                 : this(propertyType, PropertyCacheLevel.Unknown) // cache level is ignored
             {
-                _sourceValue = property?.GetValue(culture);
+                // IProperty.GetValue requires a null culture for invariant properties and the
+                // matching culture for variant ones; passing the wrong one returns null.
+                var propertyCulture = propertyType.VariesByCulture() ? culture : null;
+                _sourceValue = property?.GetValue(propertyCulture);
 
-                if (_sourceValue == null)
+                if (_sourceValue == null && property != null)
                 {
-                    // Block properties return null for GetValue...
-                    _sourceValue = property?.Values?.FirstOrDefault()?.EditedValue;
+                    var matchingValue = property.Values.FirstOrDefault(v =>
+                        string.Equals(v.Culture ?? string.Empty, propertyCulture ?? string.Empty, StringComparison.OrdinalIgnoreCase)
+                        && string.IsNullOrEmpty(v.Segment));
+                    _sourceValue = matchingValue?.EditedValue ?? matchingValue?.PublishedValue;
                 }
 
                 _content = content;
