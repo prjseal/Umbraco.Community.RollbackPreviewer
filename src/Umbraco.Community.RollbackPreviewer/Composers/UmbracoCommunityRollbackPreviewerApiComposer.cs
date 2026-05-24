@@ -29,6 +29,9 @@ namespace Umbraco.Community.RollbackPreviewer.Composers
             // Register time-limited secret service
             builder.Services.AddSingleton<ITimeLimitedSecretService, TimeLimitedSecretService>();
 
+            // Register preview URL service
+            builder.Services.AddSingleton<IPreviewUrlService, PreviewUrlService>();
+
             // Set the options from configuration
             builder.Services.Configure<Configuration.RollbackPreviewerOptions>(builder.Config.GetSection(Configuration.RollbackPreviewerOptions.SectionName));
 
